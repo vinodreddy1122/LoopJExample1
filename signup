@@ -1,0 +1,502 @@
+
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.cardview.widget.CardView;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
+import cz.msebera.android.httpclient.Header;
+
+import android.app.Dialog;
+import android.app.ProgressDialog;
+import android.content.Intent;
+import android.os.Bundle;
+import android.text.Editable;
+import android.text.TextUtils;
+import android.text.TextWatcher;
+import android.util.Log;
+import android.view.View;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
+import android.widget.Button;
+import android.widget.CheckBox;
+import android.widget.EditText;
+import android.widget.ImageView;
+import android.widget.Spinner;
+import android.widget.TextView;
+import android.widget.Toast;
+
+import com.app.aonetips.Adapter.CountriesAdapter;
+import com.app.aonetips.Adapter.NothingSelectedSpinnerAdapter;
+import com.app.aonetips.Adapter.VideosAdapter;
+import com.app.aonetips.Helpers.CountryModel;
+import com.app.aonetips.Helpers.Pinview;
+import com.app.aonetips.Utils.PrefManager;
+import com.app.aonetips.Utils.SharedPrefManager;
+import com.app.aonetips.Utils.Urls;
+import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.engine.DiskCacheStrategy;
+import com.bumptech.glide.signature.StringSignature;
+import com.google.android.material.textfield.TextInputEditText;
+import com.google.android.material.textfield.TextInputLayout;
+import com.loopj.android.http.AsyncHttpClient;
+import com.loopj.android.http.AsyncHttpResponseHandler;
+import com.loopj.android.http.RequestParams;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.util.ArrayList;
+import java.util.List;
+
+public class SignUpActivity extends AppCompatActivity implements CountriesAdapter.AdapterCallback {
+
+    TextView countrySpinner;
+    String countryNames,countryId;
+    TextInputLayout emailInput,mobileInput,passwordInput,confirmPasswordInput,userNameInput,districtInput;
+    TextInputEditText email,password,confirmPassword,userName,district;
+    CheckBox checkBox;
+    CardView login;
+    ProgressDialog progressDialog;
+    TextView countryTxt, signIn;
+    List<CountryModel> countryModelList;
+    EditText MobleNumberEdt;
+    Dialog countryListDialog;
+     Dialog dialog;
+    private RecyclerView.Adapter recyclerviewViewadapter;
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_sign_up);
+
+        emailInput = findViewById(R.id.emailInput);
+        districtInput = findViewById(R.id.districtInput);
+      //  mobileInput = findViewById(R.id.mobileInput);
+        passwordInput = findViewById(R.id.passwordInput);
+        confirmPasswordInput = findViewById(R.id.confirmPasswordInput);
+        email = findViewById(R.id.email);
+     //   mobileNumber = findViewById(R.id.mobileNumber);
+        password = findViewById(R.id.password);
+        confirmPassword = findViewById(R.id.confirmPassword);
+        checkBox = findViewById(R.id.checkBox);
+        login = findViewById(R.id.login);
+        userNameInput = findViewById(R.id.userNameInput);
+        userName = findViewById(R.id.userName);
+        district = findViewById(R.id.district);
+        signIn = findViewById(R.id.signIn);
+
+        countryTxt = findViewById(R.id.countryTxt);
+        MobleNumberEdt = findViewById(R.id.MobleNumberEdt);
+
+        signIn.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                onBackPressed();
+            }
+        });
+
+        login.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+
+                if (userName.getText().toString().isEmpty()){
+                    userNameInput.setError("Please Enter Full Name");
+                    return;
+                }
+
+                if (email.getText().toString().isEmpty()){
+                    emailInput.setError("Please Enter Email");
+                    return;
+                }
+                if (MobleNumberEdt.getText().toString().isEmpty()){
+                    Toast.makeText(SignUpActivity.this,"Please Enter Mobile Number",Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                if (password.getText().toString().isEmpty()){
+                    passwordInput.setError("Please Enter Password");
+                    return;
+                }
+                if (confirmPassword.getText().toString().isEmpty()){
+                    confirmPasswordInput.setError("Please Enter Confirm Password");
+                    return;
+                }
+
+                if (district.getText().toString().isEmpty()){
+                    districtInput.setError("Please Enter District");
+                    return;
+                }
+
+                if (TextUtils.isEmpty(countryId)) {
+                    Toast.makeText(SignUpActivity.this, "Please Select Country", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                if (!checkBox.isChecked()){
+                    Toast.makeText(SignUpActivity.this, "Please Check Terms & Conditions", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+
+                signUpData();
+
+            }
+        });
+
+        countrySpinner = findViewById(R.id.countrySpinner);
+
+        countrySpinner.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+
+                countryListPopUp();
+            }
+        });
+    }
+
+
+
+    private void signUpData(){
+
+        RequestParams params = new RequestParams();
+        params.put("action","addUser");
+        params.put("user_email", email.getText().toString());
+        params.put("country_id", countryId);
+        params.put("user_pass",password.getText().toString());
+        params.put("user_confirmpass",confirmPassword.getText().toString());
+        params.put("user_mobileno",MobleNumberEdt.getText().toString());
+        params.put("user_name",userName.getText().toString());
+        params.put("district", district.getText().toString());
+        params.put("fcm_id", SharedPrefManager.getInstance(getApplicationContext()).getDeviceToken());
+        params.put("agree","1");
+
+
+        Log.v("params",params.toString());
+
+        AsyncHttpClient client = new AsyncHttpClient();
+        client.get(Urls.userSignUpUrl,params, new AsyncHttpResponseHandler() {
+
+            @Override
+            public void onStart() {
+                // called before request is started
+
+                progressDialog = new ProgressDialog(SignUpActivity.this);
+                progressDialog.setMessage("SignUp...");
+                progressDialog.setCancelable(false);
+                progressDialog.show();
+            }
+
+            @Override
+            public void onSuccess(int statusCode, Header[] headers, byte[] response) {
+                // called when response HTTP status is "200 OK"
+                try {
+                    JSONObject statusObj = new JSONObject(new String(response));
+                    Log.v("status",statusObj.toString());
+                    /*if (statusObj.getString("status").equalsIgnoreCase("User Registerd Suceesfully")) {
+                       sendIntent(statusObj.getJSONObject("userData"));
+
+                        Intent intent = new Intent(SignUpActivity.this, HomeActivity.class);
+                        startActivity(intent);
+                        finish();
+                        progressDialog.dismiss();
+                    } else {
+                        Toast.makeText(SignUpActivity.this, statusObj.getString("status"), Toast.LENGTH_SHORT).show();
+                        progressDialog.dismiss();
+                    }*/
+
+                    if (statusObj.getString("status").equalsIgnoreCase("otp_send")){
+
+
+                        Button submitBtn;
+                        final Pinview otp_view;
+                        final TextView mobileNumber,resendOTP;
+                        dialog = new Dialog(SignUpActivity.this, android.R.style.DeviceDefault_Light_ButtonBar);
+                        dialog.getWindow().getAttributes().windowAnimations = R.style.detailDialogAnimation;
+                        dialog.setContentView(R.layout.otp_view);
+
+                        submitBtn = dialog.findViewById(R.id.submitBtn);
+                        otp_view = dialog.findViewById(R.id.otp_view);
+                        mobileNumber = dialog.findViewById(R.id.mobileNumber);
+                        resendOTP = dialog.findViewById(R.id.resendOTP);
+
+                        otp_view.setInputType(Pinview.InputType.NUMBER);
+
+                        String mobileNumberValue = MobleNumberEdt.getText().toString(); //gets you the contents of edit text
+                        mobileNumber.setText(mobileNumberValue);
+
+                        submitBtn.setOnClickListener(new View.OnClickListener() {
+                            @Override
+                            public void onClick(View view) {
+
+                                if(!otp_view.getValue().isEmpty())
+                                    otpData(otp_view.getValue(), MobleNumberEdt.getText().toString());
+                                else Toast.makeText(SignUpActivity.this,"Please Enter Otp", Toast.LENGTH_SHORT).show();
+
+
+
+                            }
+                        });
+
+
+                        resendOTP.setOnClickListener(new View.OnClickListener() {
+                            @Override
+                            public void onClick(View view) {
+
+                                resendOTPData(MobleNumberEdt.getText().toString());
+                            }
+                        });
+
+
+
+                        dialog.show();
+                        progressDialog.dismiss();
+
+                    } else {
+                        Toast.makeText(SignUpActivity.this, statusObj.getString("status"), Toast.LENGTH_SHORT).show();
+                        progressDialog.dismiss();
+                    }
+
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                    progressDialog.dismiss();
+                }
+            }
+            @Override
+            public void onFailure(int statusCode, Header[] headers, byte[] errorResponse, Throwable e) {
+                progressDialog.dismiss();
+                Toast.makeText(SignUpActivity.this,"Try Again later",Toast.LENGTH_SHORT).show();
+
+            }
+        });
+
+    }
+
+    private void sendIntent(JSONObject jsonObject) throws JSONException {
+
+
+
+        PrefManager.setEmail(SignUpActivity.this,"user_email",jsonObject.getString("user_email"));
+        PrefManager.setUserId(SignUpActivity.this,"user_id",jsonObject.getString("user_id"));
+        PrefManager.setMobile(SignUpActivity.this,"user_mobileno",jsonObject.getString("user_mobileno"));
+        PrefManager.setUserName(SignUpActivity.this,"user_name",jsonObject.getString("user_name"));
+        //Toast.makeText(SignUpActivity.this,jsonObject.getString("user_id"),Toast.LENGTH_SHORT).show();
+
+        Intent intent = new Intent(SignUpActivity.this, HomeActivity.class);
+        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        startActivity(intent);
+        finish();
+
+
+    }
+
+    private void otpData(String otpValue,String mobile){
+
+        RequestParams params = new RequestParams();
+        params.put("user_mobileno",mobile);
+        params.put("otp", otpValue);
+        Log.v("paramsotp",params.toString());
+
+            AsyncHttpClient client = new AsyncHttpClient();
+            client.get(Urls.checkOtpUrl,params, new AsyncHttpResponseHandler() {
+
+                @Override
+                public void onStart() {
+                    // called before request is started
+
+                    progressDialog = new ProgressDialog(SignUpActivity.this);
+                    progressDialog.setMessage("Submitting Otp...");
+                    progressDialog.setCancelable(false);
+                    progressDialog.show();
+
+                }
+
+                @Override
+                public void onSuccess(int statusCode, Header[] headers, byte[] response) {
+                    // called when response HTTP status is "200 OK"
+                    Log.v("jsonstatus",new String(response));
+                    try {
+                        JSONObject statusObj = new JSONObject(new String(response));
+
+                        if (statusObj.getString("status").equalsIgnoreCase("registration_sucess")) {
+                            sendIntent(statusObj.getJSONObject("userData"));
+                            dialog.dismiss();
+                            progressDialog.dismiss();
+                        } else {
+                            Toast.makeText(SignUpActivity.this, statusObj.getString("status"), Toast.LENGTH_SHORT).show();
+                            progressDialog.dismiss();
+                        }
+                    } catch (JSONException e) {
+                        progressDialog.dismiss();
+                        e.printStackTrace();
+                    }
+                }
+                @Override
+                public void onFailure(int statusCode, Header[] headers, byte[] errorResponse, Throwable e) {
+                    progressDialog.dismiss();
+                    Toast.makeText(SignUpActivity.this,"Try Again later",Toast.LENGTH_SHORT).show();
+                }
+            });
+
+
+    }
+
+    private void resendOTPData(String mobile){
+        RequestParams params = new RequestParams();
+        params.put("user_mobileno",mobile);
+
+        AsyncHttpClient client = new AsyncHttpClient();
+        client.get(Urls.resetOtp,params, new AsyncHttpResponseHandler() {
+
+            @Override
+            public void onStart() {
+                // called before request is started
+
+                progressDialog = new ProgressDialog(SignUpActivity.this);
+                progressDialog.setMessage("Please Wait...");
+                progressDialog.setCancelable(false);
+                progressDialog.show();
+
+            }
+
+            @Override
+            public void onSuccess(int statusCode, Header[] headers, byte[] response) {
+                // called when response HTTP status is "200 OK"
+                try {
+                    JSONObject statusObj = new JSONObject(new String(response));
+
+                    if (statusObj.getString("status").equalsIgnoreCase("Success")) {
+                        Toast.makeText(SignUpActivity.this, "Otp Resend Successfully", Toast.LENGTH_SHORT).show();
+
+                        progressDialog.dismiss();
+                    } else {
+                        Toast.makeText(SignUpActivity.this, statusObj.getString("status"), Toast.LENGTH_SHORT).show();
+                        progressDialog.dismiss();
+                    }
+
+
+                } catch (JSONException e) {
+                    progressDialog.dismiss();
+                    e.printStackTrace();
+                }
+            }
+            @Override
+            public void onFailure(int statusCode, Header[] headers, byte[] errorResponse, Throwable e) {
+                progressDialog.dismiss();
+                Toast.makeText(SignUpActivity.this,"Try Again later",Toast.LENGTH_SHORT).show();
+
+            }
+        });
+
+    }
+
+
+    private void countryListPopUp() {
+        ImageView closeDialog, edituserImage;
+
+
+        countryListDialog = new Dialog(SignUpActivity.this, android.R.style.DeviceDefault_Light_ButtonBar);
+        countryListDialog.getWindow().getAttributes().windowAnimations = R.style.detailDialogAnimation;
+        countryListDialog.setContentView(R.layout.country_list_popup);
+
+        EditText search = countryListDialog.findViewById(R.id.search);
+
+        final RecyclerView CountryRecyclerView = countryListDialog.findViewById(R.id.CountryRecyclerView);
+        if (countryModelList != null && countryModelList.size()>0) {
+            search.addTextChangedListener(new TextWatcher() {
+                @Override
+                public void beforeTextChanged(CharSequence charSequence, int i, int i1, int i2) {
+
+                }
+
+                @Override
+                public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {
+                    final String query = charSequence.toString().toLowerCase().trim();
+                    final ArrayList<CountryModel> filteredList = new ArrayList<>();
+
+                    for (int j = 0; j < countryModelList.size(); j++) {
+
+                        final String text = countryModelList.get(j).getCountryName().toLowerCase();
+                        if (text.contains(query)) {
+                            filteredList.add(countryModelList.get(j));
+                        }
+                    }
+                    recyclerviewViewadapter = new CountriesAdapter(filteredList, SignUpActivity.this, countryListDialog);
+                    CountryRecyclerView.setAdapter(recyclerviewViewadapter);
+                    recyclerviewViewadapter.notifyDataSetChanged();
+
+                }
+
+                @Override
+                public void afterTextChanged(Editable editable) {
+
+                }
+            });
+        }
+
+
+
+
+        RecyclerView.LayoutManager layoutManager = new LinearLayoutManager(SignUpActivity.this, RecyclerView.VERTICAL, false);
+        CountryRecyclerView.setLayoutManager(layoutManager);
+        CountryRecyclerView.setHasFixedSize(true);
+        CountryRecyclerView.setNestedScrollingEnabled(false);
+
+
+        AsyncHttpClient client = new AsyncHttpClient();
+
+        client.post(Urls.countryListUrl, new AsyncHttpResponseHandler() {
+
+            @Override
+            public void onSuccess(int statusCode, Header[] headers, byte[] response) {
+                // called when response HTTP status is "200 OK"
+                //status
+                String s = new String(response);
+                ArrayList<String> listCategory = new ArrayList<String>();
+
+                countryModelList = new ArrayList<CountryModel>();
+
+                try {
+
+                    JSONObject jsonObject = new JSONObject(s);
+
+                    JSONArray jsonArray = jsonObject.getJSONArray("countrydetails");
+
+                    for (int i=0;i<jsonArray.length();i++){
+                        JSONObject jObj =jsonArray.getJSONObject(i);
+                        countryNames = jObj.getString("CountryName");
+
+                        CountryModel countryModel = new CountryModel();
+                        countryModel.setCountryIsdCode(jObj.getString("CountryIsdCode"));
+                        countryModel.setCountryId(jObj.getString("CountryId"));
+                        countryModel.setCountryName(jObj.getString("CountryName"));
+
+                        countryModelList.add(countryModel);
+
+                    }
+
+                    recyclerviewViewadapter = new CountriesAdapter(countryModelList, SignUpActivity.this,countryListDialog);
+                    CountryRecyclerView.setAdapter(recyclerviewViewadapter);
+
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+
+            }
+            @Override
+            public void onFailure(int statusCode, Header[] headers, byte[] errorResponse, Throwable e) {
+                // called when response HTTP status is "4XX" (eg. 401, 403, 404)
+
+            }
+
+        });
+
+
+
+        countryListDialog.show();
+    }
+
+
+    @Override
+    public void countryList(String countryName, String countryId,String countryIsd) {
+        countrySpinner.setText(countryName);
+        this.countryId=countryId;
+        countryTxt.setText(countryIsd);
+    }
+}

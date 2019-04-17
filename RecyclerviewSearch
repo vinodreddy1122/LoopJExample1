@@ -1,0 +1,324 @@
+
+import android.app.SearchManager;
+import android.content.Context;
+import android.content.Intent;
+import androidx.appcompat.app.AppCompatActivity;
+
+import android.os.Bundle;
+
+import androidx.appcompat.widget.SearchView;
+import androidx.appcompat.widget.Toolbar;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
+import cz.msebera.android.httpclient.Header;
+
+import android.util.Log;
+import android.view.Menu;
+import android.view.MenuItem;
+import android.view.View;
+import android.widget.LinearLayout;
+import android.widget.ProgressBar;
+import android.widget.RelativeLayout;
+import android.widget.TextView;
+import android.widget.Toast;
+
+import com.app.aonetips.Adapter.CategoriesAdapter;
+import com.app.aonetips.Helpers.CategorysHelper;
+import com.app.aonetips.Utils.PrefManager;
+import com.app.aonetips.Utils.Urls;
+import com.loopj.android.http.AsyncHttpClient;
+import com.loopj.android.http.AsyncHttpResponseHandler;
+import com.loopj.android.http.RequestParams;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.util.ArrayList;
+import java.util.List;
+
+public class SelectCategoryActivity extends AppCompatActivity implements CategoriesAdapter.AdapterCallback {
+
+    RecyclerView categorysRecyclerview;
+    LinearLayout mainView,noCategoriesAvailable;
+    ProgressBar progressBar;
+    private List<CategorysHelper> categorysHelpers;
+    private CategoriesAdapter recyclerviewViewadapter;
+    private List<String> categoriesList;
+    String planLimit;
+    TextView planName;
+    RelativeLayout footer;
+    Toolbar toolbar;
+    private SearchView searchView;
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_select_category);
+
+        mainView = findViewById(R.id.mainView);
+        progressBar = findViewById(R.id.progressBar);
+        planName = findViewById(R.id.planName);
+        footer = findViewById(R.id.footer);
+
+
+        noCategoriesAvailable = findViewById(R.id.noCategoriesAvailable);
+        toolbar = findViewById(R.id.toolbar);
+        setSupportActionBar(toolbar);
+        toolbar.setNavigationOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                onBackPressed();
+            }
+        });
+        toolbar.setNavigationIcon(R.drawable.baseline_arrow_back_white_24);
+
+        footer.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+
+              /*  Intent intent = new Intent(SelectCategoryActivity.this, HomeActivity.class);
+                startActivity(intent);*/
+
+
+             if (categoriesList.size() > 0)
+                categoriesData();
+              else Toast.makeText(SelectCategoryActivity.this,"Please Select Categories",Toast.LENGTH_SHORT).show();
+
+            }
+        });
+
+        categorysRecyclerview = findViewById(R.id.categorysRecyclerview);
+        RecyclerView.LayoutManager layoutManager = new LinearLayoutManager(SelectCategoryActivity.this, RecyclerView.VERTICAL, false);
+        categorysRecyclerview.setLayoutManager(layoutManager);
+        categorysRecyclerview.setHasFixedSize(true);
+        categorysRecyclerview.setNestedScrollingEnabled(false);
+        categorysRecyclerview.setFocusable(false);
+
+
+        planLimit = getIntent().getStringExtra("planCategoryLimit");
+        planName.setText(getIntent().getStringExtra("planName"));
+
+        categoriesList = new ArrayList<>();
+
+        categorysData();
+    }
+
+
+    private void categorysData(){
+
+        AsyncHttpClient client = new AsyncHttpClient();
+        client.get(Urls.categoriesUrl, new AsyncHttpResponseHandler() {
+
+            public void onStart() {
+                progressBar.setVisibility(View.VISIBLE);
+                categorysRecyclerview.setVisibility(View.GONE);
+                mainView.setVisibility(View.GONE);
+                footer.setVisibility(View.GONE);
+            }
+
+            public void onSuccess(int statusCode, Header[] headers, byte[] responseBody) {
+
+                String s = new String(responseBody);
+                try {
+
+                    JSONObject jsonObject = new JSONObject(s);
+
+                    if (jsonObject.has("error")) {
+                        noCategoriesAvailable.setVisibility(View.VISIBLE);
+                        progressBar.setVisibility(View.GONE);
+                        footer.setVisibility(View.GONE);
+                        categorysRecyclerview.setVisibility(View.GONE);
+
+                    }else {
+                        categorysHelpers = new ArrayList<CategorysHelper>();
+                        JSONArray jsonArray = jsonObject.getJSONArray("categorydetails");
+
+                        for (int i = 0; i < jsonArray.length(); i++) {
+
+                            try {
+                                JSONObject jsonObject1 = jsonArray.getJSONObject(i);
+
+                                CategorysHelper categorysHelper = new CategorysHelper();
+                                categorysHelper.setCategoryID(jsonObject1.getString("CategoryID"));
+                                categorysHelper.setCategoryImage(jsonObject1.getString("CategoryImage"));
+                                categorysHelper.setCategoryName(jsonObject1.getString("CategoryName"));
+                                categorysHelpers.add(categorysHelper);
+
+                            } catch (JSONException e1) {
+                                e1.printStackTrace();
+                            }
+                        }
+
+                        recyclerviewViewadapter = new CategoriesAdapter(categorysHelpers, SelectCategoryActivity.this, planLimit);
+                        categorysRecyclerview.setAdapter(recyclerviewViewadapter);
+                        progressBar.setVisibility(View.GONE);
+                        categorysRecyclerview.setVisibility(View.VISIBLE);
+                        mainView.setVisibility(View.VISIBLE);
+                        footer.setVisibility(View.VISIBLE);
+
+                    }
+
+                } catch (JSONException e) {
+                    progressBar.setVisibility(View.GONE);
+                    categorysRecyclerview.setVisibility(View.GONE);
+                    mainView.setVisibility(View.GONE);
+                    footer.setVisibility(View.GONE);
+                    e.printStackTrace();
+                }
+            }
+
+            public void onFailure(int statusCode, Header[] headers, byte[] responseBody, Throwable e) {
+                progressBar.setVisibility(View.GONE);
+                categorysRecyclerview.setVisibility(View.GONE);
+                mainView.setVisibility(View.GONE);
+                footer.setVisibility(View.GONE);
+
+            }
+        });
+
+    }
+
+    private void categoriesData(){
+        String categoryStg =  android.text.TextUtils.join(",", categoriesList);
+
+       // Toast.makeText(SelectCategoryActivity.this,categoryStg,Toast.LENGTH_SHORT).show();
+
+        RequestParams params = new RequestParams();
+        params.put("action","add_category");
+        params.put("user_id", PrefManager.getUserId(SelectCategoryActivity.this,"user_id"));
+        params.put("stockmarket",categoryStg);
+        params.put("package_id",getIntent().getStringExtra("planId"));
+
+
+        AsyncHttpClient client = new AsyncHttpClient();
+        client.post(Urls.addCategoryUrl,params, new AsyncHttpResponseHandler() {
+
+            @Override
+            public void onStart() {
+                // called before request is started
+
+            }
+
+            @Override
+            public void onSuccess(int statusCode, Header[] headers, byte[] response) {
+                // called when response HTTP status is "200 OK"
+                try {
+                    JSONObject statusObj = new JSONObject(new String(response));
+                    Log.v("status",statusObj.toString());
+                    if (statusObj.getString("status").equalsIgnoreCase("Inserted Suceesfully")) {
+
+                        Intent intent = new Intent(SelectCategoryActivity.this, HomeActivity.class);
+                        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP);
+                        startActivity(intent);
+                        finish();
+                    }
+
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+            }
+            @Override
+            public void onFailure(int statusCode, Header[] headers, byte[] errorResponse, Throwable e) {
+                Toast.makeText(SelectCategoryActivity.this,"Try Again later",Toast.LENGTH_SHORT).show();
+
+            }
+        });
+
+
+    }
+
+    @Override
+    public void updateCat(String catId, boolean catStatus) {
+
+                if (catStatus) {
+                    if (!categoriesList.contains(catId))
+                            categoriesList.add(catId);
+                }
+                else categoriesList.remove(catId);
+
+            //Toast.makeText(SelectCategoryActivity.this, categoriesList.toString(), Toast.LENGTH_SHORT).show();
+
+
+    }
+
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+
+        // Inflate the menu; this adds items to the action bar if it is present.
+        getMenuInflater().inflate(R.menu.search_menu, menu);
+
+        if (categorysHelpers != null && categorysHelpers.size()>0) {
+            SearchManager searchManager = (SearchManager) getSystemService(Context.SEARCH_SERVICE);
+            searchView = (SearchView) menu.findItem(R.id.action_search)
+                    .getActionView();
+            searchView.setSearchableInfo(searchManager
+                    .getSearchableInfo(getComponentName()));
+            searchView.setMaxWidth(Integer.MAX_VALUE);
+
+            // listening to search query text change
+            searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
+                @Override
+                public boolean onQueryTextSubmit(String query) {
+                    // filter recycler view when query submitted
+                    recyclerviewViewadapter.getFilter().filter(query);
+                    return false;
+                }
+
+                @Override
+                public boolean onQueryTextChange(String query) {
+                    // filter recycler view when text is changed
+                    recyclerviewViewadapter.getFilter().filter(query);
+                    return false;
+                }
+            });
+        }
+        return true;
+    }
+
+
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        // Handle action bar item clicks here. The action bar will
+        // automatically handle clicks on the Home/Up button, so long
+        // as you specify a parent activity in AndroidManifest.xml.
+        switch (item.getItemId()) {
+
+        }
+
+        return super.onOptionsItemSelected(item);
+    }
+
+    @Override
+    public void onBackPressed() {
+        // close search view on back button pressed
+        if (searchView != null) {
+            if (!searchView.isIconified()) {
+                searchView.setIconified(true);
+                return;
+            }
+        }
+        super.onBackPressed();
+    }
+
+}
+
+
+
+
+
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <item
+        android:id="@+id/action_search"
+        android:icon="@drawable/baseline_search_white_24"
+        android:title="Search"
+        app:showAsAction="always"
+        app:actionViewClass="androidx.appcompat.widget.SearchView"/>
+
+
+
+</menu>

@@ -1,0 +1,250 @@
+
+ private List<CategorysHelper> categorysHelpers;
+
+ private void categoriesByUserData(){
+
+        RequestParams params = new RequestParams();
+        params.put("user_id",PrefManager.getUserId(HomeActivity.this,"user_id"));
+
+        AsyncHttpClient client = new AsyncHttpClient();
+        client.get(Urls.categoriesByUser,params, new AsyncHttpResponseHandler() {
+
+            public void onStart() {
+                progressBar.setVisibility(View.VISIBLE);
+                categorysRecyclerview.setVisibility(View.GONE);
+                noCategoriesAvailable.setVisibility(View.GONE);
+            }
+
+            public void onSuccess(int statusCode, Header[] headers, byte[] responseBody) {
+
+                String s = new String(responseBody);
+                try {
+
+                    JSONObject jsonObject = new JSONObject(s);
+
+                    if (jsonObject.has("error")) {
+                        noCategoriesAvailable.setVisibility(View.VISIBLE);
+                        progressBar.setVisibility(View.GONE);
+                        categorysRecyclerview.setVisibility(View.GONE);
+
+                    }
+                    else {
+                        categorysHelpers = new ArrayList<CategorysHelper>();
+                        JSONArray jsonArray = jsonObject.getJSONArray("categorydetails");
+
+                        for (int i = 0; i < jsonArray.length(); i++) {
+
+                            try {
+                                JSONObject jsonObject1 = jsonArray.getJSONObject(i);
+
+                                CategorysHelper categorysHelper = new CategorysHelper();
+                                categorysHelper.setCategoryID(jsonObject1.getString("CategoryID"));
+                                categorysHelper.setCategoryImage(jsonObject1.getString("CategoryImage"));
+                                categorysHelper.setCategoryName(jsonObject1.getString("CategoryName"));
+                                categorysHelper.setNewTipsCount(jsonObject1.getString("new_tips_count"));
+                                categorysHelpers.add(categorysHelper);
+
+                            } catch (JSONException e1) {
+                                e1.printStackTrace();
+                            }
+                        }
+
+                        recyclerviewViewadapter = new CategoriesByUserAdapter(categorysHelpers, HomeActivity.this);
+                        categorysRecyclerview.setAdapter(recyclerviewViewadapter);
+                        progressBar.setVisibility(View.GONE);
+                        categorysRecyclerview.setVisibility(View.VISIBLE);
+                        noCategoriesAvailable.setVisibility(View.GONE);
+                    }
+
+                } catch (JSONException e) {
+                    progressBar.setVisibility(View.GONE);
+                    categorysRecyclerview.setVisibility(View.GONE);
+                    noCategoriesAvailable.setVisibility(View.GONE);
+                    e.printStackTrace();
+                }
+            }
+
+            public void onFailure(int statusCode, Header[] headers, byte[] responseBody, Throwable e) {
+                progressBar.setVisibility(View.GONE);
+                categorysRecyclerview.setVisibility(View.GONE);
+                noCategoriesAvailable.setVisibility(View.GONE);
+            }
+        });
+
+    }
+
+
+
+    Adapter:
+
+    import java.util.List;
+
+import android.content.Context;
+
+import androidx.annotation.RequiresApi;
+import androidx.cardview.widget.CardView;
+import androidx.recyclerview.widget.RecyclerView;
+
+import android.content.Intent;
+import android.os.Build;
+import android.os.Handler;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+
+import android.view.animation.Animation;
+import android.view.animation.AnimationUtils;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.TextView;
+
+
+import com.app.aonetips.Helpers.CategorysHelper;
+import com.app.aonetips.R;
+import com.app.aonetips.TipsActivity;
+import com.bumptech.glide.Glide;
+
+public class CategoriesByUserAdapter extends RecyclerView.Adapter<CategoriesByUserAdapter.ViewHolder> {
+
+    private List<CategorysHelper> categorysHelpers;
+    private Context context;
+    Animation animBlink;
+
+    class ViewHolder extends RecyclerView.ViewHolder{
+        ImageView categoryImage;
+        TextView categoryName,categoryCount;
+        CardView cardView;
+       // LinearLayout categoryCountLayout;
+
+
+
+        ViewHolder(View itemView) {
+
+            super(itemView);
+
+            categoryImage = itemView.findViewById(R.id.categoryImage);
+            categoryName = itemView.findViewById(R.id.categoryName);
+            categoryCount = itemView.findViewById(R.id.categoryCount);
+            cardView = itemView.findViewById(R.id.cardView);
+           // categoryCountLayout = itemView.findViewById(R.id.categoryCountLayout);
+
+            animBlink = AnimationUtils.loadAnimation(context,
+                    R.anim.blink);
+        }
+    }
+    public CategoriesByUserAdapter(List<CategorysHelper> recent_items, Context context) {
+        super();
+        this.categorysHelpers = recent_items;
+        this.context = context;
+    }
+
+    @Override
+    public CategoriesByUserAdapter.ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
+
+        View v = LayoutInflater.from(parent.getContext()).inflate(R.layout.item_category_by_user, parent, false);
+
+        return new ViewHolder(v);
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.O)
+    @Override
+    public void onBindViewHolder(final ViewHolder holder, final int position) {
+
+        holder.categoryName.setText(categorysHelpers.get(position).getCategoryName());
+
+        if (categorysHelpers.get(position).getNewTipsCount().equalsIgnoreCase("0")){
+          //  holder.categoryCountLayout.setVisibility(View.GONE);
+            holder.categoryCount.setVisibility(View.GONE);
+        }else {
+           // holder.categoryCountLayout.setVisibility(View.VISIBLE);
+            holder.categoryCount.setVisibility(View.VISIBLE);
+            holder.categoryCount.setText(categorysHelpers.get(position).getNewTipsCount());
+        }
+
+
+        holder.categoryCount.startAnimation(animBlink);
+
+        Glide.with(context)
+                .load(categorysHelpers.get(position).getCategoryImage())
+                .into(holder.categoryImage);
+
+        holder.cardView.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+
+                Intent intent = new Intent(context, TipsActivity.class);
+                intent.putExtra("category_id",categorysHelpers.get(position).getCategoryID());
+                context.startActivity(intent);
+            }
+        });
+
+
+    }
+
+    @Override
+    public int getItemCount() {
+        return categorysHelpers.size();
+    }
+
+
+}
+
+
+===============
+
+Helper:
+
+public class CategorysHelper {
+
+    private String CategoryID,CategoryImage,CategoryName,newTipsCount;
+
+    public String getNewTipsCount() {
+        return newTipsCount;
+    }
+
+    public void setNewTipsCount(String newTipsCount) {
+        this.newTipsCount = newTipsCount;
+    }
+
+    public String getCategoryID() {
+        return CategoryID;
+    }
+
+    private boolean selected;
+
+    public boolean isSelected() {
+        return selected;
+    }
+
+    public void setSelected(boolean selected) {
+        this.selected = selected;
+    }
+
+    public void setCategoryID(String categoryID) {
+        CategoryID = categoryID;
+    }
+
+    public String getCategoryImage() {
+        return CategoryImage;
+    }
+
+    public void setCategoryImage(String categoryImage) {
+        CategoryImage = categoryImage;
+    }
+
+    public String getCategoryName() {
+        return CategoryName;
+    }
+
+    public void setCategoryName(String categoryName) {
+        CategoryName = categoryName;
+    }
+
+
+
+
+
+}
+
+
+============

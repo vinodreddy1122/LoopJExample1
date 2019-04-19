@@ -24,14 +24,6 @@ import android.widget.Spinner;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.app.aonetips.Adapter.CountriesAdapter;
-import com.app.aonetips.Adapter.NothingSelectedSpinnerAdapter;
-import com.app.aonetips.Adapter.VideosAdapter;
-import com.app.aonetips.Helpers.CountryModel;
-import com.app.aonetips.Helpers.Pinview;
-import com.app.aonetips.Utils.PrefManager;
-import com.app.aonetips.Utils.SharedPrefManager;
-import com.app.aonetips.Utils.Urls;
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.engine.DiskCacheStrategy;
 import com.bumptech.glide.signature.StringSignature;

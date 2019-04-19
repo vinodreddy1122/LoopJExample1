@@ -12,9 +12,6 @@ import android.view.View;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.app.aonetips.Utils.PrefManager;
-import com.app.aonetips.Utils.SharedPrefManager;
-import com.app.aonetips.Utils.Urls;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 import com.loopj.android.http.AsyncHttpClient;

@@ -99,9 +99,6 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 
-import com.app.aonetips.Helpers.CategorysHelper;
-import com.app.aonetips.R;
-import com.app.aonetips.TipsActivity;
 import com.bumptech.glide.Glide;
 
 public class CategoriesByUserAdapter extends RecyclerView.Adapter<CategoriesByUserAdapter.ViewHolder> {

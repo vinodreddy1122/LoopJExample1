@@ -22,10 +22,6 @@ import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.app.aonetips.Adapter.CategoriesAdapter;
-import com.app.aonetips.Helpers.CategorysHelper;
-import com.app.aonetips.Utils.PrefManager;
-import com.app.aonetips.Utils.Urls;
 import com.loopj.android.http.AsyncHttpClient;
 import com.loopj.android.http.AsyncHttpResponseHandler;
 import com.loopj.android.http.RequestParams;
